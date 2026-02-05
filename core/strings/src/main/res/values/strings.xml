@@ -1,0 +1,33 @@
+<resources>
+    <!-- Navigation -->
+    <string name="forecast">Прогноз</string>
+    <string name="back">Назад</string>
+    
+    <!-- City Search -->
+    <string name="city_search_title">Выбор города</string>
+    <string name="city_search_hint">Введите название города…</string>
+    
+    <!-- Weather -->
+    <string name="weather">Погода</string>
+    <string name="my_location">Моё местоположение</string>
+    <string name="search_city">Поиск города</string>
+    <string name="retry">Повторить</string>
+    <string name="feels_like">Ощущается %1$d°</string>
+    <string name="humidity">Влажность</string>
+    <string name="pressure">Давление</string>
+    <string name="wind">Ветер</string>
+    <string name="weekly_forecast">Прогноз на неделю</string>
+    <string name="hourly_forecast">Почасовой прогноз</string>
+    <string name="more_details">Подробнее</string>
+    <string name="current_location">Текущее местоположение</string>
+    
+    <!-- Errors -->
+    <string name="error_location_permission_required">Требуется разрешение на геолокацию</string>
+    <string name="error_location_failed">Не удалось получить геолокацию</string>
+    <string name="error_loading">Ошибка загрузки</string>
+    <string name="error_search">Ошибка поиска</string>
+    
+    <!-- Units -->
+    <string name="pressure_unit">hPa</string>
+    <string name="wind_speed_unit">м/с</string>
+</resources>
