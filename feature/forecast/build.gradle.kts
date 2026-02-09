@@ -26,6 +26,8 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:strings"))
+    implementation(project(":feature:weather"))
+    implementation(libs.kotlinx.collections.immutable)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)

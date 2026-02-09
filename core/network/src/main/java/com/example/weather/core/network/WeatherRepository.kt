@@ -4,10 +4,14 @@ import com.example.weather.core.model.City
 import com.example.weather.core.model.WeatherData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Singleton
 
-class WeatherRepository(
+@Singleton
+class WeatherRepository @Inject constructor(
     private val api: WeatherApi,
-    private val apiKey: String,
+    @Named("OPENWEATHER_API_KEY") private val apiKey: String,
 ) {
 
     suspend fun getWeather(lat: Double, lon: Double): Result<WeatherData> = withContext(Dispatchers.IO) {

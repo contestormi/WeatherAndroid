@@ -1,14 +1,13 @@
 package com.example.weather.feature.city
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
 import com.example.weather.core.database.CitiesRepository
 import com.example.weather.core.model.City
 import com.example.weather.core.network.WeatherRepository
+import com.example.weather.core.strings.ResourceProvider
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -17,6 +16,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -24,11 +26,17 @@ import kotlinx.coroutines.launch
 class CityViewModel @Inject constructor(
     private val weatherRepository: WeatherRepository,
     private val citiesRepository: CitiesRepository,
-    @ApplicationContext private val context: Context,
+    private val resourceProvider: ResourceProvider,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CityState())
-    val state: StateFlow<CityState> = _state.asStateFlow()
+    val state: StateFlow<CityUiState> = _state
+        .map { it.toUiState() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = _state.value.toUiState(),
+        )
 
     private val _navigation = MutableSharedFlow<CityNavigation>()
     val navigation: SharedFlow<CityNavigation> = _navigation.asSharedFlow()
@@ -38,7 +46,7 @@ class CityViewModel @Inject constructor(
     fun handleIntent(intent: CityIntent) {
         when (intent) {
             is CityIntent.SearchQueryChanged -> onSearchQueryChanged(intent.query)
-            is CityIntent.CitySelected -> onCitySelected(intent.city)
+            is CityIntent.CitySelected -> onCitySelected(intent.cityId)
             is CityIntent.Dismiss -> viewModelScope.launch {
                 _navigation.emit(CityNavigation.Dismiss)
             }
@@ -69,7 +77,7 @@ class CityViewModel @Inject constructor(
                         state.copy(
                             searchResults = emptyList(),
                             isLoading = false,
-                            error = e.message ?: context.getString(com.example.weather.core.strings.R.string.error_search),
+                            error = e.message ?: resourceProvider.getString(com.example.weather.core.strings.R.string.error_search),
                         )
                     }
                 },
@@ -77,8 +85,9 @@ class CityViewModel @Inject constructor(
         }
     }
 
-    private fun onCitySelected(city: City) {
+    private fun onCitySelected(cityId: String) {
         viewModelScope.launch {
+            val city = _state.value.searchResults.find { it.id == cityId } ?: return@launch
             citiesRepository.saveCity(city, setAsSelected = true)
             _navigation.emit(CityNavigation.CitySelected(city))
         }

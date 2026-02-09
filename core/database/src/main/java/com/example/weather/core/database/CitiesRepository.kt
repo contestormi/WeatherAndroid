@@ -3,8 +3,13 @@ package com.example.weather.core.database
 import com.example.weather.core.database.entity.toCity
 import com.example.weather.core.database.entity.toEntity
 import com.example.weather.core.model.City
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class CitiesRepository(private val dao: CitiesDao) {
+@Singleton
+class CitiesRepository @Inject constructor(
+    private val dao: CitiesDao,
+) {
 
     suspend fun getSelectedCity(): City? = dao.getSelectedCity()?.toCity()
 

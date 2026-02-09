@@ -30,16 +30,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.weather.core.model.HourlyForecast
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.weather.feature.weather.HourlyForecastItemUi
+import kotlinx.collections.immutable.ImmutableList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HourlyForecastScreen(
     dayTitle: String,
-    hourlyForecasts: List<HourlyForecast>,
+    items: ImmutableList<HourlyForecastItemUi>,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -54,24 +52,39 @@ fun HourlyForecastScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(hourlyForecasts) { hour ->
-                HourlyForecastItem(hour = hour)
+        if (items.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(com.example.weather.core.strings.R.string.hourly_empty),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(items) { item ->
+                    HourlyForecastItem(item = item)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun HourlyForecastItem(hour: HourlyForecast) {
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val weather = hour.weather.firstOrNull()
+private fun HourlyForecastItem(item: HourlyForecastItemUi) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -89,33 +102,33 @@ private fun HourlyForecastItem(hour: HourlyForecast) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = timeFormat.format(Date(hour.time * 1000)),
+                    text = item.timeText,
                     style = MaterialTheme.typography.titleMedium,
                 )
-                weather?.let {
+                if (item.iconUrl != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data("https://openweathermap.org/img/wn/${it.icon}@2x.png")
+                            .data(item.iconUrl)
                             .build(),
-                        contentDescription = it.description,
+                        contentDescription = item.description,
                         modifier = Modifier.size(48.dp),
                         contentScale = ContentScale.Fit,
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "${hour.temp.toInt()}°",
+                        text = item.tempText,
                         style = MaterialTheme.typography.titleLarge,
                     )
                     Text(
-                        text = stringResource(com.example.weather.core.strings.R.string.feels_like, hour.feelsLike.toInt()),
+                        text = item.feelsLikeText,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
-            weather?.let {
+            item.description?.let { description ->
                 Text(
-                    text = it.description.replaceFirstChar { c -> c.uppercase() },
+                    text = description,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp),
                 )

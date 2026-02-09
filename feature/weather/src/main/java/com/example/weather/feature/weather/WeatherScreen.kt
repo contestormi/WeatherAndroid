@@ -1,5 +1,6 @@
 package com.example.weather.feature.weather
 
+import android.provider.CalendarContract.Colors
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -34,8 +36,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -43,30 +45,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.weather.core.model.DailyForecast
-import com.example.weather.core.model.HourlyForecast
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeatherScreen(
-    viewModel: WeatherViewModel,
+    viewModel: WeatherViewModel = hiltViewModel(),
     onNavigateToCitySearch: () -> Unit,
     onRequestLocationPermission: () -> Unit,
-    onNavigateToHourlyForecast: () -> Unit,
+    onNavigateToHourlyForecast: (dayIndex: Int) -> Unit,
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
+    LaunchedEffect(Unit) {
+        viewModel.handleIntent(WeatherIntent.LoadInitial)
+    }
     LaunchedEffect(Unit) {
         viewModel.navigation.collect { nav ->
             when (nav) {
                 is WeatherNavigation.ToCitySearch -> onNavigateToCitySearch()
                 is WeatherNavigation.RequestLocationPermission -> onRequestLocationPermission()
-                is WeatherNavigation.ToHourlyForecast -> onNavigateToHourlyForecast()
+                is WeatherNavigation.ToHourlyForecast -> onNavigateToHourlyForecast(
+                    nav.dayIndex
+                )
             }
         }
     }
@@ -76,18 +81,36 @@ fun WeatherScreen(
             TopAppBar(
                 title = {
                     Text(
-                        state.city?.name
+                        state.cityName
                             ?: stringResource(com.example.weather.core.strings.R.string.weather),
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
                 actions = {
+                    if (state.isRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else if (state.hasWeatherData) {
+                        IconButton(onClick = {
+                            viewModel.handleIntent(
+                                WeatherIntent.Refresh
+                            )
+                        }) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = stringResource(com.example.weather.core.strings.R.string.retry)
+                            )
+                        }
+                    }
                     IconButton(onClick = { viewModel.handleIntent(WeatherIntent.RequestLocation) }) {
                         Icon(
                             Icons.Default.LocationOn,
                             contentDescription = stringResource(com.example.weather.core.strings.R.string.my_location)
                         )
                     }
+
                     IconButton(onClick = { viewModel.handleIntent(WeatherIntent.OpenCitySearch) }) {
                         Icon(
                             Icons.Default.Search,
@@ -98,16 +121,16 @@ fun WeatherScreen(
             )
         },
     ) { padding ->
-        if (state.isLoading && state.weatherData == null) {
+        if (state.isLoading && !state.hasWeatherData) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
-        } else if (state.error != null && state.weatherData == null) {
+        } else if (state.error != null && !state.hasWeatherData) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -116,11 +139,13 @@ fun WeatherScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        state.error!!,
+                        state.error.orEmpty(),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.error,
                     )
+
                     Spacer(modifier = Modifier.height(16.dp))
+
                     IconButton(onClick = { viewModel.handleIntent(WeatherIntent.Refresh) }) {
                         Icon(
                             Icons.Default.Refresh,
@@ -136,23 +161,33 @@ fun WeatherScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState()),
             ) {
-                state.weatherData?.let { data ->
-                    CurrentWeatherSection(current = data.current)
+                if (state.hasWeatherData) {
+                    val currentWeatherUi by viewModel.currentWeatherUi.collectAsStateWithLifecycle(
+                        initialValue = null
+                    )
+                    currentWeatherUi?.let { current ->
+                        CurrentWeatherSection(current = current)
+                    }
+
+                    val dailyForecastItems by viewModel.dailyForecastItems.collectAsStateWithLifecycle(
+                        initialValue = persistentListOf()
+                    )
                     DailyForecastSection(
-                        days = data.daily,
+                        items = dailyForecastItems,
                         selectedIndex = state.selectedDayIndex,
                         onDayClick = {
-                            viewModel.handleIntent(
-                                WeatherIntent.SelectDay(
-                                    it
-                                )
-                            )
+                            viewModel.handleIntent(WeatherIntent.SelectDay(it))
                         },
                     )
-                    AnimatedVisibility(visible = state.hourlyForSelectedDay.isNotEmpty()) {
+
+                    val hourlyPreviewItems by viewModel.hourlyPreviewItems.collectAsStateWithLifecycle(
+                        initialValue = persistentListOf()
+                    )
+
+                    AnimatedVisibility(visible = hourlyPreviewItems.isNotEmpty()) {
                         Column {
                             HourlyPreviewSection(
-                                hourly = state.hourlyForSelectedDay,
+                                items = hourlyPreviewItems,
                                 onShowAllClick = {
                                     viewModel.handleIntent(
                                         WeatherIntent.OpenHourlyForecast
@@ -168,10 +203,12 @@ fun WeatherScreen(
 }
 
 @Composable
-private fun CurrentWeatherSection(current: com.example.weather.core.model.CurrentWeather) {
-    val weather = current.weather.firstOrNull()
+private fun CurrentWeatherSection(
+    current: CurrentWeatherUi,
+    modifier: Modifier = Modifier,
+) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .padding(16.dp)
             .fillMaxSize(),
         colors = CardDefaults.cardColors(
@@ -186,49 +223,66 @@ private fun CurrentWeatherSection(current: com.example.weather.core.model.Curren
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            weather?.let {
+            if (current.iconUrl != null) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data("https://openweathermap.org/img/wn/${it.icon}@4x.png")
+                        .data(current.iconUrl)
                         .build(),
-                    contentDescription = it.description,
+                    contentDescription = current.description,
                     modifier = Modifier.size(120.dp),
                     contentScale = ContentScale.Fit,
                 )
             }
+
             Text(
-                text = "${current.temp.toInt()}°",
+                text = "${current.tempC}°",
                 style = MaterialTheme.typography.displayLarge,
                 fontWeight = FontWeight.Light,
             )
+
             Text(
                 text = stringResource(
                     com.example.weather.core.strings.R.string.feels_like,
-                    current.feelsLike.toInt()
+                    current.feelsLikeC
                 ),
                 style = MaterialTheme.typography.bodyLarge,
             )
-            weather?.let {
+
+            current.description?.let { description ->
                 Text(
-                    text = it.description.replaceFirstChar { c -> c.uppercase() },
+                    text = description,
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
+
             Row(
                 modifier = Modifier.padding(top = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 WeatherDetailItem(
                     stringResource(com.example.weather.core.strings.R.string.humidity),
-                    "${current.humidity}%"
+                    stringResource(
+                        com.example.weather.core.strings.R.string.humidity_value,
+                        current.humidity
+                    )
                 )
+
                 WeatherDetailItem(
                     stringResource(com.example.weather.core.strings.R.string.pressure),
-                    "${current.pressure} ${stringResource(com.example.weather.core.strings.R.string.pressure_unit)}"
+                    stringResource(
+                        com.example.weather.core.strings.R.string.pressure_value,
+                        current.pressure,
+                        stringResource(com.example.weather.core.strings.R.string.pressure_unit)
+                    )
                 )
+
                 WeatherDetailItem(
                     stringResource(com.example.weather.core.strings.R.string.wind),
-                    "${current.windSpeed.toInt()} ${stringResource(com.example.weather.core.strings.R.string.wind_speed_unit)}"
+                    stringResource(
+                        com.example.weather.core.strings.R.string.wind_speed_value,
+                        current.windSpeedKph,
+                        stringResource(com.example.weather.core.strings.R.string.wind_speed_unit)
+                    )
                 )
             }
         }
@@ -236,13 +290,21 @@ private fun CurrentWeatherSection(current: com.example.weather.core.model.Curren
 }
 
 @Composable
-private fun WeatherDetailItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun WeatherDetailItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
         )
+
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
@@ -252,53 +314,58 @@ private fun WeatherDetailItem(label: String, value: String) {
 
 @Composable
 private fun DailyForecastSection(
-    days: List<DailyForecast>,
+    items: ImmutableList<DailyForecastItem>,
     selectedIndex: Int,
     onDayClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val dateFormat = SimpleDateFormat("EE, d MMM", Locale("ru"))
-    Text(
-        text = stringResource(com.example.weather.core.strings.R.string.weekly_forecast),
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(16.dp, 8.dp),
-    )
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        itemsIndexed(days) { index, day ->
-            val isSelected = index == selectedIndex
-            Card(
-                modifier = Modifier
-                    .widthIn(min = 100.dp)
-                    .clickable { onDayClick(index) },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isSelected)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+    Column(modifier = modifier) {
+        Text(
+            text = stringResource(com.example.weather.core.strings.R.string.weekly_forecast),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(16.dp, 8.dp),
+        )
+
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            itemsIndexed(items) { index, item ->
+                val isSelected = index == selectedIndex
+                Card(
+                    modifier = Modifier
+                        .widthIn(min = 100.dp)
+                        .clickable { onDayClick(index) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                    ),
                 ) {
-                    Text(
-                        text = dateFormat.format(Date(day.date * 1000)),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    day.weather.firstOrNull()?.let { weather ->
-                        AsyncImage(
-                            model = "https://openweathermap.org/img/wn/${weather.icon}.png",
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = item.dateText,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+
+                        if (item.iconUrl != null) {
+                            AsyncImage(
+                                model = item.iconUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                            )
+                        }
+
+                        Text(
+                            text = item.tempRangeText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
                         )
                     }
-                    Text(
-                        text = "${day.tempMin.toInt()}° / ${day.tempMax.toInt()}°",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
                 }
             }
         }
@@ -307,11 +374,11 @@ private fun DailyForecastSection(
 
 @Composable
 private fun HourlyPreviewSection(
-    hourly: List<HourlyForecast>,
+    items: ImmutableList<HourlyPreviewItem>,
     onShowAllClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-    Column {
+    Column(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -323,6 +390,7 @@ private fun HourlyPreviewSection(
                 text = stringResource(com.example.weather.core.strings.R.string.hourly_forecast),
                 style = MaterialTheme.typography.titleMedium,
             )
+
             Text(
                 text = stringResource(com.example.weather.core.strings.R.string.more_details),
                 style = MaterialTheme.typography.labelLarge,
@@ -330,12 +398,17 @@ private fun HourlyPreviewSection(
                 modifier = Modifier.clickable(onClick = onShowAllClick),
             )
         }
+
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            itemsIndexed(hourly.take(8)) { _, hour ->
-                HourlyPreviewCard(hour = hour, timeFormat = timeFormat)
+            items(items.take(8)) { item ->
+                HourlyPreviewCard(
+                    timeText = item.timeText,
+                    tempText = item.tempText,
+                    iconUrl = item.iconUrl,
+                )
             }
         }
     }
@@ -343,11 +416,13 @@ private fun HourlyPreviewSection(
 
 @Composable
 private fun HourlyPreviewCard(
-    hour: HourlyForecast,
-    timeFormat: SimpleDateFormat,
+    timeText: String,
+    tempText: String,
+    iconUrl: String?,
+    modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = Modifier.widthIn(min = 70.dp),
+        modifier = modifier.widthIn(min = 70.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
         ),
@@ -357,18 +432,20 @@ private fun HourlyPreviewCard(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = timeFormat.format(Date(hour.time * 1000)),
+                text = timeText,
                 style = MaterialTheme.typography.labelSmall,
             )
-            hour.weather.firstOrNull()?.let { weather ->
+
+            if (iconUrl != null) {
                 AsyncImage(
-                    model = "https://openweathermap.org/img/wn/${weather.icon}.png",
+                    model = iconUrl,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
                 )
             }
+
             Text(
-                text = "${hour.temp.toInt()}°",
+                text = tempText,
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

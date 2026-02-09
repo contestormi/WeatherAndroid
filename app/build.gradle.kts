@@ -53,6 +53,7 @@ dependencies {
     implementation(project(":feature:weather"))
     implementation(project(":feature:city"))
     implementation(project(":feature:forecast"))
+    implementation(libs.kotlinx.collections.immutable)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -2,12 +2,11 @@ package com.example.weather.di
 
 import android.content.Context
 import com.example.weather.BuildConfig
-import com.example.weather.core.database.CitiesRepository
+import com.example.weather.core.database.CitiesDao
 import com.example.weather.core.database.WeatherDatabase
+import com.example.weather.core.strings.ResourceProvider
 import com.example.weather.core.database.createWeatherDatabase
-import com.example.weather.core.location.LocationProvider
 import com.example.weather.core.network.WeatherApi
-import com.example.weather.core.network.WeatherRepository
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import dagger.Module
@@ -15,6 +14,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Named
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -50,8 +50,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideWeatherRepository(api: WeatherApi): WeatherRepository =
-        WeatherRepository(api, BuildConfig.OPENWEATHER_API_KEY)
+    @Named("OPENWEATHER_API_KEY")
+    fun provideOpenWeatherApiKey(): String = BuildConfig.OPENWEATHER_API_KEY
 
     @Provides
     @Singleton
@@ -60,8 +60,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCitiesRepository(database: WeatherDatabase): CitiesRepository =
-        CitiesRepository(database.citiesDao())
+    fun provideCitiesDao(database: WeatherDatabase): CitiesDao =
+        database.citiesDao()
 
     @Provides
     @Singleton
@@ -70,8 +70,6 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideLocationProvider(
-        @ApplicationContext context: Context,
-        fusedLocationClient: FusedLocationProviderClient,
-    ): LocationProvider = LocationProvider(context, fusedLocationClient)
+    fun provideResourceProvider(@ApplicationContext context: Context): ResourceProvider =
+        AndroidResourceProvider(context)
 }

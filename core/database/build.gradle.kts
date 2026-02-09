@@ -22,6 +22,7 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
+    implementation("javax.inject:javax.inject:1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

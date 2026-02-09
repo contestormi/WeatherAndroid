@@ -23,23 +23,24 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.weather.core.model.City
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CitySearchScreen(
-    viewModel: CityViewModel,
+    viewModel: CityViewModel = hiltViewModel(),
     onCitySelected: (City) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.navigation.collect { nav ->
@@ -88,7 +89,7 @@ fun CitySearchScreen(
                 }
                 state.error != null -> {
                     Text(
-                        text = state.error!!,
+                        text = state.error.orEmpty(),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(16.dp),
                     )
@@ -99,10 +100,10 @@ fun CitySearchScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(state.searchResults) { city ->
+                        items(state.searchResultItems) { item ->
                             CityItem(
-                                city = city,
-                                onClick = { viewModel.handleIntent(CityIntent.CitySelected(city)) },
+                                item = item,
+                                onClick = { viewModel.handleIntent(CityIntent.CitySelected(item.id)) },
                             )
                         }
                     }
@@ -113,7 +114,7 @@ fun CitySearchScreen(
 }
 
 @Composable
-private fun CityItem(city: City, onClick: () -> Unit) {
+private fun CityItem(item: CityItemUi, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -131,11 +132,11 @@ private fun CityItem(city: City, onClick: () -> Unit) {
         ) {
             Column {
                 Text(
-                    text = city.name,
+                    text = item.name,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = city.country,
+                    text = item.country,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

@@ -20,7 +20,10 @@ android {
 }
 
 dependencies {
+    implementation("javax.inject:javax.inject:1")
     implementation(libs.androidx.core.ktx)
+    implementation(libs.hilt.android)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.play.services.location)
 }

@@ -1,10 +1,20 @@
 package com.example.weather.feature.weather
 
+import androidx.compose.runtime.Immutable
 import com.example.weather.core.model.City
-import com.example.weather.core.model.DailyForecast
 import com.example.weather.core.model.WeatherData
 
-data class WeatherState(
+@Immutable
+data class WeatherScreenUiState(
+    val cityName: String?,
+    val isLoading: Boolean,
+    val isRefreshing: Boolean = false,
+    val hasWeatherData: Boolean,
+    val error: String?,
+    val selectedDayIndex: Int,
+)
+
+internal data class WeatherScreenBackingState(
     val city: City? = null,
     val weatherData: WeatherData? = null,
     val selectedDayIndex: Int = 0,
@@ -12,14 +22,14 @@ data class WeatherState(
     val isRefreshing: Boolean = false,
     val error: String? = null,
 ) {
-    val selectedDay: DailyForecast?
-        get() = weatherData?.daily?.getOrNull(selectedDayIndex)
-
     val hourlyForSelectedDay: List<com.example.weather.core.model.HourlyForecast>
-        get() {
-            val day = selectedDay ?: return emptyList()
-            val dayStart = (day.date / 86400) * 86400
-            val dayEnd = dayStart + 86400
-            return weatherData?.hourly?.filter { it.time in dayStart until dayEnd } ?: emptyList()
-        }
+        get() = hourlyForDayIndex(selectedDayIndex)
+
+    fun hourlyForDayIndex(dayIndex: Int): List<com.example.weather.core.model.HourlyForecast> {
+        val day = weatherData?.daily?.getOrNull(dayIndex) ?: return emptyList()
+        val dayStart =
+            (day.date / WeatherConstants.SECONDS_PER_DAY) * WeatherConstants.SECONDS_PER_DAY
+        val dayEnd = dayStart + WeatherConstants.SECONDS_PER_DAY
+        return weatherData.hourly.filter { it.time in dayStart until dayEnd }
+    }
 }
