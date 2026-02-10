@@ -1,6 +1,7 @@
 package com.example.weather.feature.forecast
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
@@ -53,13 +54,12 @@ fun HourlyForecastScreen(
         },
     ) { padding ->
         if (items.isEmpty()) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stringResource(com.example.weather.core.strings.R.string.hourly_empty),
@@ -75,7 +75,10 @@ fun HourlyForecastScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(items) { item ->
+                items(
+                    items = items,
+                    key = { it.timeText },
+                ) { item ->
                     HourlyForecastItem(item = item)
                 }
             }
@@ -84,9 +87,12 @@ fun HourlyForecastScreen(
 }
 
 @Composable
-private fun HourlyForecastItem(item: HourlyForecastItemUi) {
+private fun HourlyForecastItem(
+    item: HourlyForecastItemUi,
+    modifier: Modifier = Modifier,
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
         ),

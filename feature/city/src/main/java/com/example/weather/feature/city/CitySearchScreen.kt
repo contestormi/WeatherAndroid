@@ -2,6 +2,7 @@ package com.example.weather.feature.city
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -79,10 +80,9 @@ fun CitySearchScreen(
             )
             when {
                 state.isLoading -> {
-                    Column(
+                    Box(
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
                     }
@@ -100,7 +100,10 @@ fun CitySearchScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(state.searchResultItems) { item ->
+                        items(
+                            items = state.searchResultItems,
+                            key = { it.id },
+                        ) { item ->
                             CityItem(
                                 item = item,
                                 onClick = { viewModel.handleIntent(CityIntent.CitySelected(item.id)) },
@@ -114,9 +117,13 @@ fun CitySearchScreen(
 }
 
 @Composable
-private fun CityItem(item: CityItemUi, onClick: () -> Unit) {
+private fun CityItem(
+    item: CityItemUi,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(

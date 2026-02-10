@@ -416,6 +416,7 @@ data class HourlyForecastItemUi(
     val iconUrl: String?,
 )
 
+@Immutable
 data class HourlyScreenUiState(
     val dayTitle: String,
     val items: ImmutableList<HourlyForecastItemUi>,

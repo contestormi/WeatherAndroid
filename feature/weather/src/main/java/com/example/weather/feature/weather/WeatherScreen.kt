@@ -69,9 +69,7 @@ fun WeatherScreen(
             when (nav) {
                 is WeatherNavigation.ToCitySearch -> onNavigateToCitySearch()
                 is WeatherNavigation.RequestLocationPermission -> onRequestLocationPermission()
-                is WeatherNavigation.ToHourlyForecast -> onNavigateToHourlyForecast(
-                    nav.dayIndex
-                )
+                is WeatherNavigation.ToHourlyForecast -> onNavigateToHourlyForecast(nav.dayIndex)
             }
         }
     }
@@ -82,7 +80,7 @@ fun WeatherScreen(
                 title = {
                     Text(
                         state.cityName
-                            ?: stringResource(com.example.weather.core.strings.R.string.weather),
+                            ?: stringResource(id = com.example.weather.core.strings.R.string.weather),
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -91,6 +89,7 @@ fun WeatherScreen(
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
                             strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     } else if (state.hasWeatherData) {
                         IconButton(onClick = {
@@ -100,22 +99,22 @@ fun WeatherScreen(
                         }) {
                             Icon(
                                 Icons.Default.Refresh,
-                                contentDescription = stringResource(com.example.weather.core.strings.R.string.retry)
+                                contentDescription = stringResource(id = com.example.weather.core.strings.R.string.retry)
                             )
                         }
                     }
                     IconButton(onClick = { viewModel.handleIntent(WeatherIntent.RequestLocation) }) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = stringResource(com.example.weather.core.strings.R.string.my_location)
-                        )
+Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = stringResource(id = com.example.weather.core.strings.R.string.my_location)
+                    )
                     }
 
                     IconButton(onClick = { viewModel.handleIntent(WeatherIntent.OpenCitySearch) }) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = stringResource(com.example.weather.core.strings.R.string.search_city)
-                        )
+Icon(
+                        Icons.Default.Search,
+                        contentDescription = stringResource(id = com.example.weather.core.strings.R.string.search_city)
+                    )
                     }
                 },
             )
@@ -148,8 +147,8 @@ fun WeatherScreen(
 
                     IconButton(onClick = { viewModel.handleIntent(WeatherIntent.Refresh) }) {
                         Icon(
-                            Icons.Default.Refresh,
-                            stringResource(com.example.weather.core.strings.R.string.retry)
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(id = com.example.weather.core.strings.R.string.retry)
                         )
                     }
                 }
@@ -162,16 +161,12 @@ fun WeatherScreen(
                     .verticalScroll(rememberScrollState()),
             ) {
                 if (state.hasWeatherData) {
-                    val currentWeatherUi by viewModel.currentWeatherUi.collectAsStateWithLifecycle(
-                        initialValue = null
-                    )
+                    val currentWeatherUi by viewModel.currentWeatherUi.collectAsStateWithLifecycle(initialValue = null)
                     currentWeatherUi?.let { current ->
                         CurrentWeatherSection(current = current)
                     }
 
-                    val dailyForecastItems by viewModel.dailyForecastItems.collectAsStateWithLifecycle(
-                        initialValue = persistentListOf()
-                    )
+                    val dailyForecastItems by viewModel.dailyForecastItems.collectAsStateWithLifecycle(initialValue = persistentListOf())
                     DailyForecastSection(
                         items = dailyForecastItems,
                         selectedIndex = state.selectedDayIndex,
@@ -180,9 +175,7 @@ fun WeatherScreen(
                         },
                     )
 
-                    val hourlyPreviewItems by viewModel.hourlyPreviewItems.collectAsStateWithLifecycle(
-                        initialValue = persistentListOf()
-                    )
+                    val hourlyPreviewItems by viewModel.hourlyPreviewItems.collectAsStateWithLifecycle(initialValue = persistentListOf())
 
                     AnimatedVisibility(visible = hourlyPreviewItems.isNotEmpty()) {
                         Column {
@@ -242,7 +235,7 @@ private fun CurrentWeatherSection(
 
             Text(
                 text = stringResource(
-                    com.example.weather.core.strings.R.string.feels_like,
+                    id = com.example.weather.core.strings.R.string.feels_like,
                     current.feelsLikeC
                 ),
                 style = MaterialTheme.typography.bodyLarge,
@@ -260,28 +253,28 @@ private fun CurrentWeatherSection(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 WeatherDetailItem(
-                    stringResource(com.example.weather.core.strings.R.string.humidity),
+                    stringResource(id = com.example.weather.core.strings.R.string.humidity),
                     stringResource(
-                        com.example.weather.core.strings.R.string.humidity_value,
+                        id = com.example.weather.core.strings.R.string.humidity_value,
                         current.humidity
                     )
                 )
 
                 WeatherDetailItem(
-                    stringResource(com.example.weather.core.strings.R.string.pressure),
+                    stringResource(id = com.example.weather.core.strings.R.string.pressure),
                     stringResource(
-                        com.example.weather.core.strings.R.string.pressure_value,
+                        id = com.example.weather.core.strings.R.string.pressure_value,
                         current.pressure,
-                        stringResource(com.example.weather.core.strings.R.string.pressure_unit)
+                        stringResource(id = com.example.weather.core.strings.R.string.pressure_unit)
                     )
                 )
 
                 WeatherDetailItem(
-                    stringResource(com.example.weather.core.strings.R.string.wind),
+                    stringResource(id = com.example.weather.core.strings.R.string.wind),
                     stringResource(
-                        com.example.weather.core.strings.R.string.wind_speed_value,
+                        id = com.example.weather.core.strings.R.string.wind_speed_value,
                         current.windSpeedKph,
-                        stringResource(com.example.weather.core.strings.R.string.wind_speed_unit)
+                        stringResource(id = com.example.weather.core.strings.R.string.wind_speed_unit)
                     )
                 )
             }
@@ -321,7 +314,7 @@ private fun DailyForecastSection(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = stringResource(com.example.weather.core.strings.R.string.weekly_forecast),
+            text = stringResource(id = com.example.weather.core.strings.R.string.weekly_forecast),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(16.dp, 8.dp),
         )
@@ -387,12 +380,12 @@ private fun HourlyPreviewSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(com.example.weather.core.strings.R.string.hourly_forecast),
+                text = stringResource(id = com.example.weather.core.strings.R.string.hourly_forecast),
                 style = MaterialTheme.typography.titleMedium,
             )
 
             Text(
-                text = stringResource(com.example.weather.core.strings.R.string.more_details),
+                text = stringResource(id = com.example.weather.core.strings.R.string.more_details),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable(onClick = onShowAllClick),
